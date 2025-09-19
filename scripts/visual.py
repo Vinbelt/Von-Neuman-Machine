@@ -1,6 +1,6 @@
 import os
 import time
-import scripts.main as main
+import main
 
 """
 This module provides a visual simulation of a Von Neumann architecture computer.
