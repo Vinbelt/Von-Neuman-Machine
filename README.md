@@ -1,4 +1,4 @@
-# VonNeuman
+# VonNeuman   
 
 A Python simulator for the Von Neumann architecture, featuring a visual console interface.
 
