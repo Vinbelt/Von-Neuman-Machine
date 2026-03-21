@@ -46,40 +46,48 @@ VonNeuman: main.VonNeuman
 def setup():
     """Sets up the Von Neumann simulation environment, including loading instructions and configuring the console.
     Returns:
-        tuple: A tuple containing the list of instructions and the simulation speed
+        list: A list containing the instructions for the simulation
     """
     os.system('mode con: cols=90 lines=100')
     instructions = []
 
-    print("Starting Von Neuman simulation...")
-    speed = float(input("Enter the speed of the simulation (in seconds, e.g., 1.0 for 1 second per step): ") or "1.0")
+    
     while True:
-        Instruction = input("Enter an 8-bit binary instruction (or type 'run' to execute, 'exit' to quit): ")
-        if len(Instruction) != 8 or not all(bit in '01' for bit in Instruction):
-            if Instruction.lower() == 'run':
+        ##! To get changed into a n-bit mode
+        instruction = input("Enter an 8-bit binary instruction (or type 'run' to execute, 'exit' to quit, 'charge' to load from file): ")
+        if len(instruction) != 8 or not all(bit in '01' for bit in instruction):
+            
+            if instruction.lower() == 'run':
                 try:
-                    os.system('cls' if os.name == 'nt' else 'clear')
-                    return instructions, speed
+                    os.system('cls' if os.name == 'nt' 
+                              else 'clear')
+                    return instructions
 
                 except Exception as e:
                     print(f"Error: {e}")
-                    Instruction = []
+                    instruction = list()
                     print("Restarting instruction input...")
                     continue
-            elif Instruction.lower() == 'exit':
+            
+            elif instruction.lower() == 'exit':
                 print("Exiting program...")
-                return [], None # Returns None to indicate exit
-            elif Instruction.lower() == "charge":
+                return [] # Returns None to indicate exit
+            
+            elif instruction.lower() == "charge":
+                ##? Needed to insert the input inside function and add error management, but it works
                 adress = input("Enter the address of the file: ")
                 instructions = charge(adress, instructions)
                 print(f"Instructions loaded from {adress}.txt")
-                return instructions, speed 
+                return instructions 
+            
             else:
                 print("Invalid instruction. Please enter an 8-bit binary number.")
                 continue
-        instructions.append(Instruction)
+        
+        instructions.append(instruction)
 
 def charge(adress:str, instructions = list()):
+    ##! To be changed as refered in line 81
     """Loads instructions from a specified file into the instruction list.
     Args:
         adress (str): The base name of the file (without .txt extension)
@@ -92,7 +100,9 @@ def charge(adress:str, instructions = list()):
             instructions.append(line.strip())
     return instructions[::-1]
 
+
 def update_visual_data(speed=1.0):
+    ##! Confusing name, to be changed
     """Updates the visual representation of the Von Neumann architecture state.
     Args:
         speed (float, optional): Delay time in seconds for visualization updates. Defaults to 1.0.
@@ -156,12 +166,15 @@ def update_visual_data(speed=1.0):
                     "HALT···",
                     "       "
                 ]
+
         address_register = VonNeuman.data_register[1]
+
     elif len(VonNeuman.data_register) == 1:
         order_register = VonNeuman.data_register[0]
         data_register = VonNeuman.data_register[0]
 
     visualize()
+    
     if len(VonNeuman.data_register) > 1 and VonNeuman.data_register[0] != "HAL":
         time.sleep(0.4)
         try:
@@ -183,11 +196,13 @@ def visualize():
     global data_register
     global insert_register
 
-    os.system('cls' if os.name == 'nt' else 'clear')
+    os.system('cls' if os.name == 'nt' 
+            else 'clear')
     try:
         print(int(VonNeuman.read_memory(int(VonNeuman.data_register[1], 2)), 2))
     except Exception:
         pass
+    
     MAIN_INTEFACE = f"""
     Unidad de Control (APU)                    Unidad Aritmético Lógica (ALU)
     ╔═════════════════════════════════════╗   ╔══════════════════════════════════════╗
@@ -214,7 +229,10 @@ def visualize():
                 ║ ║├──────────┼───────────────────────────┤║║
                 ║ ╚│ {format(0, f'0{VonNeuman.clock_size}b')}     │ {VonNeuman.memory[0]}                  │╝║
                 ║  ├──────────┼───────────────────────────┤ ║"""
+    
+    
     print(MAIN_INTEFACE)
+
     for n in range(1, len(VonNeuman.memory)):
         if n < len(VonNeuman.memory) - 1:
             print(f"""                ║  │ {format(n, f'0{VonNeuman.clock_size}b')}     │ {VonNeuman.memory[n]}                  │ ║

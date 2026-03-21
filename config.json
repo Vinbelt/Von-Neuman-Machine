@@ -1,0 +1,9 @@
+{
+    "version": "0.1.0",
+    "main":{
+        "speed": 0.5,
+        "directory_bus": 4,
+        "memory_bus": 8,
+        "direct_addressing": false
+    }
+}
