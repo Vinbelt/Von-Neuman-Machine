@@ -53,3 +53,7 @@ See `others/test.txt` for a sample instruction set.
 - Custom memory bus and direction bus size selection from the visual interface.
 
 -Vinbelt
+
+arreglos:
+ 1.- control del path de los ficheros
+ 2.- El fichero de memoria lo carga al revés con charge...

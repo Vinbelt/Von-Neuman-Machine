@@ -1,4 +1,5 @@
 import time
+import os
 import visual as visual_lib
 from json import load as json_load
 
@@ -17,7 +18,7 @@ La función principal inicializa el simulador y lo ejecuta con una interfaz visu
 class VonNeuman:
     """A simple Von Neumann architecture simulator.
     Attributes:
-        directory_bus (int): Size of the directory bus in bits.
+        dbus (int): Size of the directory bus in bits.
         memory_bus (int): Size of the memory bus in bits.
         direct_addressing (bool): If True, uses direct addressing mode.
         clock_size (int): Size of the clock in bits.
@@ -26,7 +27,7 @@ class VonNeuman:
         data_register (list): List of current instruction and its address/data.
         acumulator (int): Accumulator for arithmetic operations.
     Exceptions:
-        Missing_Setup_Arguments: Raised when directory_bus or memory_bus is less than 1
+        Missing_Setup_Arguments: Raised when dbus or memory_bus is less than 1
         Missing_Instructions: Raised when no instructions are provided to set_instructions
         End_Of_Memory: Raised when trying to fetch an instruction beyond memory size
         Out_Of_Bounds: Raised when trying to access memory out of its bounds
@@ -61,14 +62,21 @@ class VonNeuman:
         
         # Initialize attributes
 
-        self.directory_bus = dbus
-        self.memory_bus = mbus
+        self.dbus = dbus
+        self.mbus = mbus
         self.direct_addressing = direct_addressing
         self.clock_size = dbus
         self.clock = 0
         self.memory = []
-        self.data_register = []
+        self.pointer=-1
         self.acumulator = 0
+        self.symbol=[]
+        self.data_register = []  #ojo, este tiene un trato especial
+        self.address_register=0
+        self.order_register=0
+        self.insert_register=0
+        self.speed=1.0
+        self.status=''
     
     def show_memory(self) -> list:
         """Returns a formatted string representation of the memory.
@@ -122,10 +130,11 @@ class VonNeuman:
         Raises:
             End_Of_Memory: If trying to fetch an instruction beyond memory size
         """
-        if self.clock > len(self.memory):
-            raise self.End_Of_Memory("No more instructions in memory")
-        else:
-            self. data_register.append(self.memory[self.clock])
+        self.pointer+=1
+        self.status='fetch  '
+        del self.data_register[:]
+        self.data_register.append(self.memory[self.pointer])
+
     
     def read_memory(self, address: int) -> str:
         """Reads the instruction at the given memory address.
@@ -146,6 +155,7 @@ class VonNeuman:
         Raises:
             Out_Of_Bounds: If the address/data part of the instruction is out of memory bounds
         """
+        self.status='decode '
         instruction = self.data_register[0]
         del self.data_register[0]
         interpretation = ""
@@ -167,7 +177,7 @@ class VonNeuman:
             case "0111": #HALT
                 interpretation = "HAL"
         self.data_register.append(interpretation)
-        print(str(instruction)[4:])
+        print("instrucción:",str(instruction)[4:])
         self.data_register.append(str(instruction)[4:])
     
     def execute(self) -> bool:
@@ -177,6 +187,7 @@ class VonNeuman:
         Returns:
             bool: True if execution continues, False if HALT instruction is encountered
         """
+        self.status='execute'
         if self.data_register[0] == "HAL":
             print("Halting execution")
             return False
@@ -199,9 +210,9 @@ class VonNeuman:
             case "OR":
                 self.acumulator |= data
             case "MOV":
-                self.memory[int(self.data_register[1], 2)] = format(self.acumulator, f"0{self.memory_bus}b")
+                self.memory[int(self.data_register[1], 2)] = format(self.acumulator, f"0{self.mbus}b")
                 self.acumulator = 0
-        del self.data_register[:]
+        #del self.data_register[:]
         return True
 
 def config_pull() -> dict:
@@ -209,7 +220,9 @@ def config_pull() -> dict:
     Returns:
         dict: Configuration parameters as a dictionary
     """
-    with open("../config.json", "r") as config_file:
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    config_path = os.path.join(script_dir, "..", "config.json")
+    with open(config_path, "r") as config_file:
         config = json_load(config_file)
     return config["main"]
 
@@ -223,9 +236,8 @@ def main() -> int:
     global CONFIG
     instructions: list
     instructions = visual_lib.setup()
-    
     VN_machine = setup(4, 8, direct_addressing=False)
-    VN_machine = run(VN_machine, instructions, CONFIG["speed"]+0.5) #
+    run(VN_machine, instructions, CONFIG["speed"]+0.5) #modificado julio2026
 
     while True:
         i = input("Press ENTER to exit...")
@@ -235,24 +247,24 @@ def main() -> int:
             pass
     return 0
 
-def setup(directory_bus: int, memory_bus: int, direct_addressing=True) -> VonNeuman:
+def setup(dbus: int, mbus: int, direct_addressing=True) -> VonNeuman:
     """Sets up the Von Neumann simulator with given parameters.
     Args:
-        directory_bus (int): Size of the directory bus in bits.
-        memory_bus (int): Size of the memory bus in bits.
+        dbus (int): Size of the directory bus in bits.
+        mbus (int): Size of the memory bus in bits.
         direct_addressing (bool, optional): If True, uses direct addressing mode. Defaults to True.
     Returns:
         VN_machine (VonNeuman): Configured Von Neumann simulator instance.
     """
     try:
-        VN_machine = VonNeuman(directory_bus, memory_bus, direct_addressing)
+        VN_machine = VonNeuman(dbus, mbus, direct_addressing)
     except VonNeuman.Missing_Setup_Arguments:
         print("Invalid setup parameters, exiting...")
         ##? Need to define exit codes, but for now just exit with 1 to indicate an error
         exit(1)
     return VN_machine
 
-def run(VN_machine: VonNeuman, instructions: list, speed=1.0) -> VonNeuman:    
+def run(VN_machine: VonNeuman, instructions: list, speed=1.0)-> None:    
     """Runs the Von Neumann simulator with visual updates.
     Args:
         VN_machine (VonNeuman): The Von Neumann simulator instance.
@@ -271,58 +283,54 @@ def run(VN_machine: VonNeuman, instructions: list, speed=1.0) -> VonNeuman:
         ##? Need to define exit codes, but for now just exit with 1 to indicate an error
         exit(1)
     while True:
-        visual_lib.update_visual_data(speed)
-        VN_machine.next_instruction()
-        #First, the instruction is fetched from memory
-        time.sleep(speed)
-        visual_lib.update_visual_data(speed)
-        VN_machine.interpreter()
-        #Then, the instruction is interpreted
-        time.sleep(speed)
-        visual_lib.update_visual_data(speed)
-        time.sleep(speed)
-        try:
-            if VN_machine.execute(): #Finally, the instruction is executed
-                visual_lib.update_visual_data(speed)
-            else: # If HALT instruction, exit the loop
-                print("End of program")
-                print()
-                ##! To be moved to visual module
-                for line in VN_machine.show_memory():
-                     # Display final memory state
-                    print(line)
-                print()
-                break
-        except VonNeuman.Out_Of_Bounds:
-            # If an instruction tries to access memory out of bounds, exit the loop
-            print("Address out of bounds, exiting...")
+        fetch1(VN_machine)
+        espera()
+        VN_machine.tick()  
+        fetch2(VN_machine)
+        espera()
+        VN_machine.tick()  
+        decode(VN_machine)
+        espera()
+        VN_machine.tick()  
+        execute(VN_machine)
+        if VN_machine.data_register[0]=='HAL':
+            print("End of program")
             print()
             ##! To be moved to visual module
             for line in VN_machine.show_memory():
                 # Display final memory state
                 print(line)
-            print()
-            ##? Need to define exit codes, but for now just exit with 1 to indicate an error
-            exit(1)
-        
-        visual_lib.update_visual_data(speed)
-        
-        try:
-            time.sleep(speed)
-            VN_machine.tick()
-        except VonNeuman.Clock_Overload:
-            print("Clock overloaded")
-            print()
-            ##! To be moved to visual module
-            for line in VN_machine.show_memory():
-                # Display final memory state
-                print(line)
-            print()
-            ##? Need to define exit codes, but for now just exit with 1 to indicate an error
-            exit(1)
-        time.sleep(speed)
+                print()
+            break   
+        espera()
+        VN_machine.tick()   
+    return #modificado julio2026
+
+
+def fetch1(VN_machine: VonNeuman)-> None:   
+    VN_machine.next_instruction()  # es la instruccion
+    #First, the instruction is fetched from memory
+    visual_lib.update_visual_data(VN_machine.speed)
     
-    return VN_machine 
+def fetch2(VN_machine: VonNeuman)-> None: 
+    #nada
+    visual_lib.update_visual_data(VN_machine.speed)
+
+def decode(VN_machine: VonNeuman)-> None:
+    VN_machine.interpreter() #Then, the instruction is interpreted
+    visual_lib.update_visual_data(VN_machine.speed)
+
+def execute(VN_machine: VonNeuman)-> None:   
+    if VN_machine.execute(): #Finally, the instruction is executed
+        visual_lib.update_visual_data(VN_machine.speed)
+
+def espera() -> None:
+    while True:
+        i = input("Press ENTER to CONTINUE...")
+        if i == "":
+            break
+        else:
+            pass  
 
 if __name__ == "__main__":
     main()

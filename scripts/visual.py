@@ -78,6 +78,7 @@ def setup():
                 adress = input("Enter the address of the file: ")
                 instructions = charge(adress, instructions)
                 print(f"Instructions loaded from {adress}.txt")
+
                 return instructions 
             
             else:
@@ -95,10 +96,12 @@ def charge(adress:str, instructions = list()):
     Returns:
         list: The updated list of instructions
     """
-    with open(f"{adress}.txt", "r") as f:
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    config_path = os.path.join(script_dir, "../others", adress)
+    with open(f"{config_path}.txt", "r") as f:
         for line in f:
             instructions.append(line.strip())
-    return instructions[::-1]
+    return instructions
 
 
 def update_visual_data(speed=1.0):
@@ -182,9 +185,7 @@ def update_visual_data(speed=1.0):
         except Exception:
             insert_register = "ERR     "
         visualize()
-    else:
-        visualize()
-
+    time.sleep(speed)
 
 def visualize():
     """Renders the current state of the Von Neumann architecture to the console.
@@ -198,48 +199,46 @@ def visualize():
 
     os.system('cls' if os.name == 'nt' 
             else 'clear')
-    try:
-        print(int(VonNeuman.read_memory(int(VonNeuman.data_register[1], 2)), 2))
-    except Exception:
-        pass
     
-    MAIN_INTEFACE = f"""
+    MAIN_INTERFACE = f"""
     Unidad de Control (APU)                    Unidad Aritmético Lógica (ALU)
     ╔═════════════════════════════════════╗   ╔══════════════════════════════════════╗
-    ║   ╔═══════╗ Reloj ╔═«════════╗      ║   ║ ╔════════════╗                       ║
-    ║   ║{symbol[0]}║       █ ║  {format(VonNeuman.clock, f'0{VonNeuman.directory_bus}b')}   «═╗   ║   ║ ║            ║                       ║
-    ║   ║{symbol[1]}«══╗    ╚═»════════╝  ║   ║   ║ ║        /───^────────────\\          ║
-    ║   ║{symbol[2]}║  ║    ╔══════════╗  ║   ║   ║ ║       /                  \\         ║
-    ║   ╚═══════╝  ╠════« {order_register} «══║═════╗ ║ ║      /                    \\        ║
-    ║   Decodif.   ║    ╚══════════╝  ║   ║ ║ ║ ║     /__________/\\__________\\       ║
-    ║              ║    R.Instruccins.║   ║ ║ ║ ║     | {format(VonNeuman.acumulator, f'0{VonNeuman.memory_bus}b')} || {insert_register} |       ║
-    ╚══════════════║══════════════════║═══╝ ║ ║ ║     └─^────────┘└─^────────┘       ║
-                   ║                  ║     ║ ║ ╠═══════╝           ║                ║
-                   ╠══════════════════╝     ║ ╚═║═══════════════════║════════════════╝
-                   ║                        ║   ║                   ║
-                  ╔╝                        ╚═══╣                   ║
+    ║              Inst:╔══════════╗      ║   ║ ╔════════════╗                       ║
+    ║   ╔═══════╗  ╔════╣  {format(VonNeuman.pointer, f'0{VonNeuman.dbus}b')}    ║      ║   ║ ║            ║                       ║
+    ║   ║{symbol[0]}║  ║    ║  {VonNeuman.status} ║      ║   ║ ║            ║                       ║
+    ║   ║{symbol[1]}«══╣    ╚══════════╝      ║   ║ ║        /───^────────────\\          ║
+    ║   ║{symbol[2]}║  ║    ╔══════════╗      ║   ║ ║       /      A L U       \\         ║
+    ║   ╚═══════╝  ╠════« {order_register} «════════╗ ║ ║      /                    \\        ║
+    ║   Decodif.   ║    ╚══════════╝      ║ ║ ║ ║     /__________/\\__________\\       ║
+    ║              ║    R.Instruccins.    ║ ║ ║ ║     | {format(VonNeuman.acumulator, f'0{VonNeuman.mbus}b')} || {insert_register} |       ║
+    ╚══════════════║══════════════════ ═══╝ ║ ║ ║     └─^────────┘└─^────────┘       ║
+    clock:         ║                        ║ ║ ╠═══════╝           ║                ║
+    ╔══════════╗   ║                        ║ ╚═║═══════════════════║════════════════╝
+    ║ {format(VonNeuman.clock, f'04d')}     ║   ║                        ║   ║                   ║
+    ╚══════════╝  ╔╝                        ╚═══╣                   ║
                 ╔═║═════════════════════════════║═══════════╗       ║
-                ║ ║╔══════════╗                ╔^═════════╗ ║       ║
+                ║ ║╔══════════╗                ╔══════════╗ ║       ║
                 ║ ╚» {address_register}     »═╗            ╔═» {data_register} »═════════╝
                 ║  ╚══════════╝ ║            ║ ╚══════════╝ ║
                 ║  R.Dirección  ║            ║ R.Datos      ║
                 ║ ╔═════════════╝            ╚═════════════╗║
                 ║ ║┌──────────┬───────────────────────────┐║║
                 ║ ║│Direccion │Data                       │║║
-                ║ ║├──────────┼───────────────────────────┤║║
-                ║ ╚│ {format(0, f'0{VonNeuman.clock_size}b')}     │ {VonNeuman.memory[0]}                  │╝║
-                ║  ├──────────┼───────────────────────────┤ ║"""
+                ║ ║├──────────┼───────────────────────────┤║║  """
+ 
     
     
-    print(MAIN_INTEFACE)
+    print(MAIN_INTERFACE)
 
-    for n in range(1, len(VonNeuman.memory)):
+    for n in range(0, len(VonNeuman.memory)):
         if n < len(VonNeuman.memory) - 1:
-            print(f"""                ║  │ {format(n, f'0{VonNeuman.clock_size}b')}     │ {VonNeuman.memory[n]}                  │ ║
-                ║  ├──────────┼───────────────────────────┤ ║""")
+            print(f"""                ║ ╠│ {format(n, f'0{VonNeuman.clock_size}b')}     │ {VonNeuman.memory[n]}                  │╣║
+                ║ ║├──────────┼───────────────────────────┤║║""")
         if n == len(VonNeuman.memory) - 1:
-            print(f"""                ║  │ {format(n, f'0{VonNeuman.clock_size}b')}     │ {VonNeuman.memory[n]}                  │ ║
+            print(f"""                ║ ╠│ {format(n, f'0{VonNeuman.clock_size}b')}     │ {VonNeuman.memory[n]}                  │╣║
                 ║  └──────────────────────────────────────┘ ║
                 ╚═══════════════════════════════════════════╝""")
+            
+
 
 ##VINBELT
