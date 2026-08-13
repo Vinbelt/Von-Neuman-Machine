@@ -43,63 +43,38 @@ class VonNeuman:
     """
     class Missing_Setup_Arguments(Exception):
         pass
-
     class Missing_Instructions(Exception):
         pass
-
     class End_Of_Memory(Exception):
         pass
-
     class Out_Of_Bounds(Exception):
         pass
-
     class Clock_Overload(Exception):
         pass
 
     def __init__(self, dbus: int, mbus: int, direct_addressing=True):
         if dbus < 1 or mbus < 1:
-            raise self.Missing_Setup_Arguments("Directory bus and Memory bus must be at least 1 bit")
-        
+            raise self.Missing_Setup_Arguments("Directory bus and Memory bus must be at least 1 bit")     
         # Initialize attributes
-
         self.dbus = dbus
         self.mbus = mbus
         self.direct_addressing = direct_addressing
         self.clock_size = dbus
         self.clock = 0
         self.memory = []
+        self.memoryBackup = []
+        self.data_register = ['00000000']  #ojo, este tiene un trato especial
+        #  ----------------------Los siguientes se imprimirán en pantalla----------------
         self.pointer=-1
         self.acumulator = 0
         self.symbol=[]
-        self.data_register = []  #ojo, este tiene un trato especial
-        self.address_register=0
-        self.order_register=0
-        self.insert_register=0
-        self.speed=1.0
+        self.address_register=format(0, f'0{dbus}b')  
+        self.order_register='  ----  '
+        self.data_reg=format(0,f'0{dbus}b')
+        self.insert_register=format(0, f'0{mbus}b')
+        self.speed=0.3
         self.status=''
-    
-    def show_memory(self) -> list:
-        """Returns a formatted string representation of the memory.
-        Returns:
-            list: List of strings representing the memory state
-        """
-        memory = list()
-        for i in range(len(self.memory)):
-            if i == 0:
-                memory.append(f"""                ┌──────────┬───────────────────────────┐║║
-                    │Direccion │Data                       │║║
-                    ├──────────┼───────────────────────────┤║║
-                    │ {format(0, f'0{self.clock_size}b')}     │ {self.memory[0]}                  │╝║
-                    ├──────────┼───────────────────────────┤ ║""")
-            elif i < len(self.memory)-1:
-                memory.append(f"""                │ {format(i, f'0{self.clock_size}b')}     │ {self.memory[i]}                  │ ║
-                ├──────────┼───────────────────────────┤ ║""")
-            else:
-                memory.append(f"""                │ {format(i, f'0{self.clock_size}b')}     │ {self.memory[i]}                  │ ║
-                └──────────┴───────────────────────────┘ ║""")
-        return memory
-
-            
+        self.tempvar=''
     
     def tick(self) -> None:
         """Increments the clock by 1, raises Clock_Overload if max value exceeded.
@@ -122,19 +97,30 @@ class VonNeuman:
             raise self.Missing_Instructions("No instructions provided")
         else:    
             self.memory = instructions
-
-    
-    ##! To be merged with read_memory
+        
     def next_instruction(self) -> None:
         """Fetches the next instruction from memory into the data register.
         Raises:
             End_Of_Memory: If trying to fetch an instruction beyond memory size
         """
         self.pointer+=1
-        self.status='fetch  '
+        self.status='fetch'
         del self.data_register[:]
         self.data_register.append(self.memory[self.pointer])
+        self.symbol = [
+                            "       ",
+                            "\033[7m fetch \033[0m",
+                            "       "
+                            ]
+        self.address_register=format(self.pointer,f'0{self.dbus}b')
+        self.order_register='  ----  '
+        self.data_reg='\033[42m'+self.data_register[0]+'\033[0m'
+        self.insert_register=format(0, f'0{self.mbus}b')
 
+    def fetch2(self) -> None:
+        self.address_register=format(self.pointer,f'0{self.dbus}b')
+        self.order_register='\033[42m'+self.data_register[0]+'\033[0m'
+        self.data_reg='  ----  '
     
     def read_memory(self, address: int) -> str:
         """Reads the instruction at the given memory address.
@@ -155,9 +141,8 @@ class VonNeuman:
         Raises:
             Out_Of_Bounds: If the address/data part of the instruction is out of memory bounds
         """
-        self.status='decode '
+        self.status='decode'
         instruction = self.data_register[0]
-        del self.data_register[0]
         interpretation = ""
         match str(instruction)[:4]:
             case "0000": #ADD
@@ -177,9 +162,75 @@ class VonNeuman:
             case "0111": #HALT
                 interpretation = "HAL"
         self.data_register.append(interpretation)
-        print("instrucción:",str(instruction)[4:])
         self.data_register.append(str(instruction)[4:])
-    
+        self.order_register=self.data_register[0]
+        self.address_register=self.data_register[2]
+        match self.data_register[1]:
+            case "ADD":
+                self.symbol = [
+                    "   │   ",
+                    "───┼───",
+                    "   │   "
+                    ]
+                self.data_reg=self.memory[int(self.data_register[2],2)]
+                self.insert_register=self.data_reg
+            case "SUB":
+                self.symbol = [
+                    "       ",
+                    "───────",
+                    "       "
+                    ]
+                self.data_reg=self.memory[int(self.data_register[2],2)]
+                self.insert_register=self.data_reg
+            case "PRD":
+                self.symbol = [
+                    r"  \ /  ",
+                    r"   X   ",
+                    r"  / \  "
+                    ]
+                self.data_reg=self.memory[int(self.data_register[2],2)]
+                self.insert_register=self.data_reg
+            case "PWR":
+                self.symbol = [
+                    r"  / \  "
+                    r" /   \ "
+                    "/     \\"
+                    ]
+                self.data_reg=self.memory[int(self.data_register[2],2)]
+                self.insert_register=self.data_reg
+            case "AND":
+                self.symbol = [
+                    " ┌───┐ ",
+                    "─┤AND├─",
+                    " └───┘ "
+                    ]
+                self.data_reg=self.memory[int(self.data_register[2],2)]
+                self.insert_register=self.data_reg
+            case "OR":
+                self.symbol = [
+                    " ┌───┐ ",
+                    "─┤OR ├─",
+                    " └───┘ "
+                    ]
+                self.data_reg=self.memory[int(self.data_register[2],2)]
+                self.insert_register=self.data_reg
+            case "MOV":
+                self.symbol= [
+                    r"|\   /|",
+                    r"| \ / |",
+                    r"|     |"
+                ]
+                self.address_register=self.data_register[2]
+                self.data_reg=format(self.acumulator, f'0{self.mbus}b')
+            case "HAL":
+                self.symbol = [
+                    "       ",
+                    "HALT···",
+                    "       "
+                ]
+                self.address_register='00000000'
+                self.data_reg='  ----  '
+
     def execute(self) -> bool:
         """Executes the current instruction in the data register.
         Raises:
@@ -188,15 +239,15 @@ class VonNeuman:
             bool: True if execution continues, False if HALT instruction is encountered
         """
         self.status='execute'
-        if self.data_register[0] == "HAL":
+        if self.data_register[1] == "HAL":
             print("Halting execution")
             return False
         if self.direct_addressing:
-            data = int(self.data_register[1], 2)
+            data = int(self.data_register[2], 2)
         else:
-            data = int(self.read_memory(int(self.data_register[1], 2)), 2)
+            data = int(self.read_memory(int(self.data_register[2], 2)), 2)
 
-        match self.data_register[0]:
+        match self.data_register[1]:
             case "ADD":
                 self.acumulator += data
             case "SUB":
@@ -210,7 +261,7 @@ class VonNeuman:
             case "OR":
                 self.acumulator |= data
             case "MOV":
-                self.memory[int(self.data_register[1], 2)] = format(self.acumulator, f"0{self.mbus}b")
+                self.memory[int(self.data_register[2], 2)] = format(self.acumulator, f"0{self.mbus}b")
                 self.acumulator = 0
         #del self.data_register[:]
         return True
@@ -237,7 +288,7 @@ def main() -> int:
     instructions: list
     instructions = visual_lib.setup()
     VN_machine = setup(4, 8, direct_addressing=False)
-    run(VN_machine, instructions, CONFIG["speed"]+0.5) #modificado julio2026
+    run(VN_machine, instructions, CONFIG["speed"]+0.5)
 
     while True:
         i = input("Press ENTER to exit...")
@@ -293,27 +344,20 @@ def run(VN_machine: VonNeuman, instructions: list, speed=1.0)-> None:
         espera()
         VN_machine.tick()  
         execute(VN_machine)
-        if VN_machine.data_register[0]=='HAL':
+        if VN_machine.data_register[1]=='HAL':
             print("End of program")
             print()
-            ##! To be moved to visual module
-            for line in VN_machine.show_memory():
-                # Display final memory state
-                print(line)
-                print()
             break   
         espera()
         VN_machine.tick()   
-    return #modificado julio2026
-
+    return
 
 def fetch1(VN_machine: VonNeuman)-> None:   
     VN_machine.next_instruction()  # es la instruccion
-    #First, the instruction is fetched from memory
     visual_lib.update_visual_data(VN_machine.speed)
     
 def fetch2(VN_machine: VonNeuman)-> None: 
-    #nada
+    VN_machine.fetch2()
     visual_lib.update_visual_data(VN_machine.speed)
 
 def decode(VN_machine: VonNeuman)-> None:
