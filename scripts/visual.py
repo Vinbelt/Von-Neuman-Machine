@@ -50,10 +50,10 @@ def setup():
     """
     os.system('mode con: cols=90 lines=100')
     instructions = []
-
+    os.system('cls' if os.name == 'nt' 
+            else 'clear')
     
     while True:
-        ##! To get changed into a n-bit mode
         instruction = input("Enter an 8-bit binary instruction (or type 'run' to execute, 'exit' to quit, 'charge' to load from file): ")
         if len(instruction) != 8 or not all(bit in '01' for bit in instruction):
             
@@ -78,6 +78,7 @@ def setup():
                 adress = input("Enter the address of the file: ")
                 instructions = charge(adress, instructions)
                 print(f"Instructions loaded from {adress}.txt")
+
                 return instructions 
             
             else:
@@ -87,7 +88,6 @@ def setup():
         instructions.append(instruction)
 
 def charge(adress:str, instructions = list()):
-    ##! To be changed as refered in line 81
     """Loads instructions from a specified file into the instruction list.
     Args:
         adress (str): The base name of the file (without .txt extension)
@@ -95,151 +95,66 @@ def charge(adress:str, instructions = list()):
     Returns:
         list: The updated list of instructions
     """
-    with open(f"{adress}.txt", "r") as f:
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    config_path = os.path.join(script_dir, "../others", adress)
+    with open(f"{config_path}.txt", "r") as f:
         for line in f:
             instructions.append(line.strip())
-    return instructions[::-1]
+    return instructions
 
 
 def update_visual_data(speed=1.0):
-    ##! Confusing name, to be changed
-    """Updates the visual representation of the Von Neumann architecture state.
-    Args:
-        speed (float, optional): Delay time in seconds for visualization updates. Defaults to 1.0.
-    """
-
-    global VonNeuman
-    global address_register
-    global order_register
-    global symbol
-    global data_register
-    global insert_register
-
-    
-    if len(VonNeuman.data_register) > 1:
-        match VonNeuman.data_register[0]:
-            case "ADD":
-                symbol = [
-                    "   │   ",
-                    "───┼───",
-                    "   │   "
-                    ]
-            case "SUB":
-                symbol = [
-                    "       ",
-                    "───────",
-                    "       "
-                    ]
-            case "PRD":
-                symbol = [
-                    r"  \ /  ",
-                    r"   X   ",
-                    r"  / \  "
-                    ]
-            case "PWR":
-                symbol = [
-                    r"  / \  "
-                    r" /   \ "
-                    "/     \\"
-                    ]
-            case "AND":
-                symbol = [
-                    " ┌───┐ ",
-                    "─┤AND├─",
-                    " └───┘ "
-                    ]
-            case "OR":
-                symbol = [
-                    " ┌───┐ ",
-                    "─┤OR ├─",
-                    " └───┘ "
-                    ]
-            case "MOV":
-                symbol= [
-                    r"|\   /|",
-                    r"| \ / |",
-                    r"|     |"
-                ]
-            case "HAL":
-                symbol = [
-                    "       ",
-                    "HALT···",
-                    "       "
-                ]
-
-        address_register = VonNeuman.data_register[1]
-
-    elif len(VonNeuman.data_register) == 1:
-        order_register = VonNeuman.data_register[0]
-        data_register = VonNeuman.data_register[0]
-
-    visualize()
-    
-    if len(VonNeuman.data_register) > 1 and VonNeuman.data_register[0] != "HAL":
-        time.sleep(0.4)
-        try:
-            insert_register = VonNeuman.memory[int(VonNeuman.read_memory(int(VonNeuman.data_register[1], 2)), 2)]
-        except Exception:
-            insert_register = "ERR     "
-        visualize()
-    else:
-        visualize()
-
-
-def visualize():
     """Renders the current state of the Von Neumann architecture to the console.
     """
     global VonNeuman
-    global address_register
-    global order_register
-    global symbol
-    global data_register
-    global insert_register
-
     os.system('cls' if os.name == 'nt' 
             else 'clear')
-    try:
-        print(int(VonNeuman.read_memory(int(VonNeuman.data_register[1], 2)), 2))
-    except Exception:
-        pass
     
-    MAIN_INTEFACE = f"""
+    MAIN_INTERFACE = f"""
     Unidad de Control (APU)                    Unidad Aritmético Lógica (ALU)
     ╔═════════════════════════════════════╗   ╔══════════════════════════════════════╗
-    ║   ╔═══════╗ Reloj ╔═«════════╗      ║   ║ ╔════════════╗                       ║
-    ║   ║{symbol[0]}║       █ ║  {format(VonNeuman.clock, f'0{VonNeuman.directory_bus}b')}   «═╗   ║   ║ ║            ║                       ║
-    ║   ║{symbol[1]}«══╗    ╚═»════════╝  ║   ║   ║ ║        /───^────────────\\          ║
-    ║   ║{symbol[2]}║  ║    ╔══════════╗  ║   ║   ║ ║       /                  \\         ║
-    ║   ╚═══════╝  ╠════« {order_register} «══║═════╗ ║ ║      /                    \\        ║
-    ║   Decodif.   ║    ╚══════════╝  ║   ║ ║ ║ ║     /__________/\\__________\\       ║
-    ║              ║    R.Instruccins.║   ║ ║ ║ ║     | {format(VonNeuman.acumulator, f'0{VonNeuman.memory_bus}b')} || {insert_register} |       ║
-    ╚══════════════║══════════════════║═══╝ ║ ║ ║     └─^────────┘└─^────────┘       ║
-                   ║                  ║     ║ ║ ╠═══════╝           ║                ║
-                   ╠══════════════════╝     ║ ╚═║═══════════════════║════════════════╝
-                   ║                        ║   ║                   ║
-                  ╔╝                        ╚═══╣                   ║
+    ║              Inst:╔══════════╗      ║   ║ ╔════════════╗                       ║
+    ║   ╔═══════╗  ╔════╣  {format(VonNeuman.pointer, f'0{VonNeuman.dbus}b').center(8)}║      ║   ║ ║            ║                       ║
+    ║   ║{VonNeuman.symbol[0]}║  ║    ║  {VonNeuman.status.center(7)} ║      ║   ║ ║            ║                       ║
+    ║   ║{VonNeuman.symbol[1]}«══╣    ╚══════════╝      ║   ║ ║        /───^────────────\\          ║
+    ║   ║{VonNeuman.symbol[2]}║  ║    ╔══════════╗      ║   ║ ║       /      A L U       \\         ║
+    ║   ╚═══════╝  ╠════« {VonNeuman.order_register.center(8)} «════════╗ ║ ║      /                    \\        ║
+    ║   Decodif.   ║    ╚══════════╝      ║ ║ ║ ║     /__________/\\__________\\       ║
+    ║              ║    R.Instruccins.    ║ ║ ║ ║     | {format(VonNeuman.acumulator, f'0{VonNeuman.mbus}b')} || {VonNeuman.insert_register} |       ║
+    ╚══════════════║══════════════════ ═══╝ ║ ║ ║     └─^────────┘└─^────────┘       ║
+    clock:         ║                        ║ ║ ╠═══════╝           ║                ║
+    ╔══════════╗   ║                        ║ ╚═║═══════════════════║════════════════╝
+    ║ {format(VonNeuman.clock, f'04d')}     ║   ║                        ║   ║                   ║
+    ╚══════════╝  ╔╝                        ╚═══╣                   ║
                 ╔═║═════════════════════════════║═══════════╗       ║
-                ║ ║╔══════════╗                ╔^═════════╗ ║       ║
-                ║ ╚» {address_register}     »═╗            ╔═» {data_register} »═════════╝
+                ║ ║╔══════════╗                ╔══════════╗ ║       ║
+                ║ ╚» {VonNeuman.address_register.center(8)} »═╗            ╔═» {VonNeuman.data_reg.center(8)} »═════════╝
                 ║  ╚══════════╝ ║            ║ ╚══════════╝ ║
                 ║  R.Dirección  ║            ║ R.Datos      ║
                 ║ ╔═════════════╝            ╚═════════════╗║
                 ║ ║┌──────────┬───────────────────────────┐║║
                 ║ ║│Direccion │Data                       │║║
-                ║ ║├──────────┼───────────────────────────┤║║
-                ║ ╚│ {format(0, f'0{VonNeuman.clock_size}b')}     │ {VonNeuman.memory[0]}                  │╝║
-                ║  ├──────────┼───────────────────────────┤ ║"""
+                ║ ║├──────────┼───────────────────────────┤║║  """
+ 
+        
+    print(MAIN_INTERFACE)
     
-    
-    print(MAIN_INTEFACE)
-
-    for n in range(1, len(VonNeuman.memory)):
+    k=int(VonNeuman.address_register,2)
+    for n in range(0, len(VonNeuman.memory)):
+        if n==k:
+            if (VonNeuman.status=="execute" or VonNeuman.status=="decode") and VonNeuman.data_register[1]=="MOV":
+                print(f"""                ║ ╠│{"\033[41m"} {format(n, f'0{VonNeuman.dbus}b')}     {"\033[0m"}│ {"\033[41m"+VonNeuman.memory[n]+"\033[0m"}                  │╣║ """)           
+            else:
+                print(f"""                ║ ╠│{"\033[42m"} {format(n, f'0{VonNeuman.dbus}b')}     {"\033[0m"}│ {"\033[42m"+VonNeuman.memory[n]+"\033[0m"}                  │╣║ """)           
+        else:    
+            print(f"""                ║ ╠│ {format(n, f'0{VonNeuman.dbus}b')}     │ {VonNeuman.memory[n]}                  │╣║ """)
         if n < len(VonNeuman.memory) - 1:
-            print(f"""                ║  │ {format(n, f'0{VonNeuman.clock_size}b')}     │ {VonNeuman.memory[n]}                  │ ║
-                ║  ├──────────┼───────────────────────────┤ ║""")
+            print(f"""                ║ ║├──────────┼───────────────────────────┤║║""")
         if n == len(VonNeuman.memory) - 1:
-            print(f"""                ║  │ {format(n, f'0{VonNeuman.clock_size}b')}     │ {VonNeuman.memory[n]}                  │ ║
-                ║  └──────────────────────────────────────┘ ║
+            print(f"""                ║  └──────────────────────────────────────┘ ║
                 ╚═══════════════════════════════════════════╝""")
+
+    time.sleep(speed)            
+
 
 ##VINBELT
