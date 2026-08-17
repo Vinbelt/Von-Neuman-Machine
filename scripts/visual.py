@@ -90,14 +90,14 @@ def setup():
 def charge(adress:str, instructions = list()):
     """Loads instructions from a specified file into the instruction list.
     Args:
-        adress (str): The base name of the file (without .txt extension)
+        adress (str): The base name of the file
         instructions (list, optional): The list to append instructions to. Defaults to an empty list.
     Returns:
         list: The updated list of instructions
     """
     script_dir = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(script_dir, "../others", adress)
-    with open(f"{config_path}.txt", "r") as f:
+    with open(f"{config_path}", "r") as f:
         for line in f:
             instructions.append(line.strip())
     return instructions
