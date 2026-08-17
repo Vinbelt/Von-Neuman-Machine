@@ -1,4 +1,3 @@
-import time
 import os
 import visual as visual_lib
 from json import load as json_load
